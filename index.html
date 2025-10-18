@@ -61,12 +61,21 @@
     .sort-asc:after, .sort-desc:after { content: ''; display: inline-block; width: 0; height: 0; margin-left: .5rem; vertical-align: middle; border-left: 4px solid transparent; border-right: 4px solid transparent; transition: transform .15s; }
     .sort-asc:after { border-bottom: 4px solid var(--primary-color); }
     .sort-desc:after { border-top: 4px solid var(--primary-color); }
-    .weekly-details-row td { padding: 0; border-top: none; border-bottom: 1px solid var(--border-color); }
+    .weekly-details-row td { padding: 0; border-top: none; border-bottom: 1px solid var(--border-color); white-space: normal; }
     .weekly-details-summary { font-weight: 600; color: var(--primary-color); cursor: pointer; list-style: none; padding: .75rem 1.25rem; transition: background-color .15s; }
     .weekly-details-summary::marker { display: none; }
-    .weekly-details-content { background: #f7f7f7; padding: 1rem 1.5rem 1rem 3rem; border-radius: 0 0 .5rem .5rem; border-top: 1px solid #e5e5e5; }
+    .weekly-details-content {
+      background: #f7f7f7;
+      padding: 1rem 1.5rem 1rem 3rem;
+      border-radius: 0 0 .5rem .5rem;
+      border-top: 1px solid #e5e5e5;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
     .weekly-details-row details[open] .weekly-details-summary { background: var(--primary-light); border-bottom: 1px solid #e5e5e5; }
     .detail-box { background: #fff; padding: .75rem; border-radius: .375rem; box-shadow: 0 1px 3px rgba(0, 0, 0, .05); }
+    .weekly-details-content p { margin: .25rem 0 0; white-space: normal; word-break: break-word; }
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
     .kpi-card { padding: 1rem; border-radius: .5rem; border-left: 5px solid; box-shadow: 0 2px 8px rgba(0, 0, 0, .08); display: flex; flex-direction: column; align-items: center; text-align: center; }
     .kpi-card span:first-child { color: var(--text-color); }
@@ -379,7 +388,7 @@
           <td colspan="6" style="padding:0;">
             <details>
               <summary class="weekly-details-summary">Click for Details (Wins, Risks, Next, Support)</summary>
-              <div class="weekly-details-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+              <div class="weekly-details-content">
                 <div class="detail-box" style="border-left: 4px solid #10B981;"><strong style="color: #059669;">${detailIcons.wins} Wins:</strong><p style="margin-top: .25rem;">${(item.wins || 'No reported wins.').replace(/\n/g, '<br>')}</p></div>
                 <div class="detail-box" style="border-left: 4px solid #EF4444;"><strong style="color: #DC2626;">${detailIcons.risks} Risks:</strong><p style="margin-top: .25rem;">${(item.risks || 'No reported risks.').replace(/\n/g, '<br>')}</p></div>
                 <div class="detail-box" style="border-left: 4px solid #3B82F6;"><strong style="color: #2563EB;">${detailIcons.next} Next:</strong><p style="margin-top: .25rem;">${(item.next || 'No next steps.').replace(/\n/g, '<br>')}</p></div>
