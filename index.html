@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RightOrigins Customer Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #4f46e5;
+      --primary-light: #eef2ff;
+      --text-color: #1f2937;
+      --bg-color: #f9fafb;
+      --border-color: #e5e7eb;
+    }
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+      margin: 0;
+    }
+    .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+    header { background: var(--primary-color); color: #fff; padding: 1rem 1.5rem; box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); }
+    h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+    .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: .3rem .75rem; border-radius: 9999px; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .bg-green-500 { background: #10B981; color: #fff; }
+    .bg-yellow-500 { background: #F59E0B; color: #1f2937; }
+    .bg-red-500 { background: #EF4444; color: #fff; }
+    .bg-gray-400 { background: #9CA3AF; color: #fff; }
+    .filter-bar { background: #fff; padding: 1rem; border-radius: .5rem; box-shadow: 0 2px 8px rgba(0, 0, 0, .08); display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: 1.5rem; justify-content: space-between; }
+    .local-filter-bar { background: transparent; padding: 0; box-shadow: none; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+    .filter-main-group { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; min-width: 150px; }
+    .filter-bar label, .local-filter-bar label { font-size: .875rem; font-weight: 500; margin-bottom: .25rem; color: #4b5563; }
+    .filter-bar select, .filter-bar button, .local-filter-bar select, .local-filter-bar button { padding: .5rem .75rem; border: 1px solid var(--border-color); border-radius: .375rem; background: #fff; font-size: 1rem; transition: border-color .15s, box-shadow .15s; height: 38px; }
+    .filter-bar select:focus, .filter-bar button:focus, .local-filter-bar select:focus, .local-filter-bar button:focus { border-color: var(--primary-color); outline: 0; box-shadow: 0 0 0 3px rgba(79, 70, 229, .3); }
+    .filter-bar #reset-global-filters-btn { cursor: pointer; font-weight: 600; background: var(--primary-light); color: var(--primary-color); }
+    .filter-bar #refresh-data-btn { cursor: pointer; font-weight: 600; background: var(--primary-color); color: #fff; }
+    .updated-indicator { font-size: .75rem; color: #6b7280; margin-left: 1rem; align-self: center; padding: 0; }
+    @media (max-width: 640px) {
+      .filter-main-group, .local-filter-bar { flex-direction: column; align-items: stretch; width: 100%; }
+      .filter-group { width: 100%; }
+      .filter-bar #reset-global-filters-btn, .filter-bar #refresh-data-btn { width: 100%; margin-top: .5rem; }
+      .updated-indicator { width: 100%; text-align: center; margin-top: 1rem; }
+    }
+    .secondary-nav-bar { border-bottom: 2px solid var(--border-color); margin-top: 1.5rem; }
+    .tabs { display: flex; }
+    .tab-button { padding: .75rem 1.25rem; font-size: 1rem; font-weight: 600; cursor: pointer; border: 0; background: transparent; color: #6b7280; transition: color .2s, border-bottom .2s; }
+    .tab-button:hover:not(.active-tab) { color: var(--primary-color); }
+    .active-tab { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
+    .content-area { padding-top: 1.5rem; }
+    .card { background: #fff; border-radius: .5rem; box-shadow: 0 2px 8px rgba(0, 0, 0, .08); padding: 1.5rem; margin-bottom: 1.5rem; }
+    .table-responsive { overflow-x: auto; width: 100%; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .875rem; }
+    table th { padding: .75rem 1.25rem; font-weight: 600; color: #4b5563; background: var(--primary-light); cursor: pointer; position: relative; }
+    table td { padding: .75rem 1.25rem; white-space: nowrap; }
+    #weekly-table-body tr:nth-child(4n-3) { background: #fafafa; }
+    #weekly-table-body tr:not(.weekly-details-row):hover { background: #f0f4f8; }
+    table tr:last-child { border-bottom: 1px solid var(--border-color); }
+    .sort-asc:after, .sort-desc:after { content: ''; display: inline-block; width: 0; height: 0; margin-left: .5rem; vertical-align: middle; border-left: 4px solid transparent; border-right: 4px solid transparent; transition: transform .15s; }
+    .sort-asc:after { border-bottom: 4px solid var(--primary-color); }
+    .sort-desc:after { border-top: 4px solid var(--primary-color); }
+    .weekly-details-row td { padding: 0; border-top: none; border-bottom: 1px solid var(--border-color); }
+    .weekly-details-summary { font-weight: 600; color: var(--primary-color); cursor: pointer; list-style: none; padding: .75rem 1.25rem; transition: background-color .15s; }
+    .weekly-details-summary::marker { display: none; }
+    .weekly-details-content { background: #f7f7f7; padding: 1rem 1.5rem 1rem 3rem; border-radius: 0 0 .5rem .5rem; border-top: 1px solid #e5e5e5; }
+    .weekly-details-row details[open] .weekly-details-summary { background: var(--primary-light); border-bottom: 1px solid #e5e5e5; }
+    .detail-box { background: #fff; padding: .75rem; border-radius: .375rem; box-shadow: 0 1px 3px rgba(0, 0, 0, .05); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+    .kpi-card { padding: 1rem; border-radius: .5rem; border-left: 5px solid; box-shadow: 0 2px 8px rgba(0, 0, 0, .08); display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .kpi-card span:first-child { color: var(--text-color); }
+    .kpi-card span:last-child { color: #6b7280; }
+    .border-blue-500 { border-left-color: #3B82F6; } .bg-blue-100 { background: #DBEAFE; }
+    .border-green-500 { border-left-color: #10B981; } .bg-green-100 { background: #D1FAE5; }
+    .border-yellow-500 { border-left-color: #F59E0B; } .bg-yellow-100 { background: #FEF3C7; }
+    .border-red-500 { border-left-color: #EF4444; } .bg-red-100 { background: #FEE2E2; }
+    .border-indigo-500 { border-left-color: #6366F1; } .bg-indigo-100 { background: #E0E7FF; }
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .chart-container { height: 400px; display: flex; justify-content: center; align-items: center; }
+    .hidden { display: none !important; }
+    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, .8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .spinner { border: 4px solid var(--border-color); border-top: 4px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <header><div class="container"><h1>RightOrigins Customer Dashboard</h1></div></header>
+  <div class="container">
+    <div class="filter-bar">
+      <div class="filter-main-group">
+        <div class="filter-group">
+          <label for="project-dd">Project</label>
+          <select id="project-dd"></select>
+        </div>
+        <div class="filter-group">
+          <label for="pm-dd">PM</label>
+          <select id="pm-dd"></select>
+        </div>
+        <button id="reset-global-filters-btn">Reset Global Filters</button>
+        <button id="refresh-data-btn" title="Refresh Data" class="refresh-button">🔄 Refresh</button>
+      </div>
+      <p id="updated-indicator" class="updated-indicator hidden">Updated: </p>
+    </div>
+    <div class="secondary-nav-bar">
+      <div class="tabs">
+        <button id="weekly-tab-btn" class="tab-button active-tab">Weekly View</button>
+        <button id="monthly-tab-btn" class="tab-button">Monthly Aggregates</button>
+      </div>
+    </div>
+    <div class="content-area">
+      <p id="error-message" class="hidden" style="padding: 1rem; background-color: #FEE2E2; border: 1px solid #F87171; color: #B91C1C; border-radius: .375rem;" role="alert"></p>
+      <div id="weekly-view">
+        <div class="local-filter-bar">
+          <div class="filter-group">
+            <label for="week-dd">Reporting Week (IST)</label>
+            <select id="week-dd"></select>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Weekly Project Status (Latest per Project)</h2>
+          <p id="weekly-no-rows" class="hidden" style="text-align: center; color: #6b7280; padding: 2rem 0;">No weekly reports found for the selected filters.</p>
+          <div class="table-responsive">
+            <table id="weekly-table">
+              <thead>
+                <tr>
+                  <th data-field="project">Project</th>
+                  <th data-field="status">Status</th>
+                  <th data-field="happiness" style="text-align: center;">Customer Happiness</th>
+                  <th data-field="confidence" style="text-align: center;">PM Confidence</th>
+                  <th data-field="weekIST">Reporting Week</th>
+                  <th data-field="pm">PM</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="monthly-view" class="hidden">
+        <div class="local-filter-bar">
+          <div class="filter-group">
+            <label for="month-dd-local">Month (IST)</label>
+            <select id="month-dd-local"></select>
+          </div>
+        </div>
+        <div id="monthly-kpis" class="kpi-grid hidden"></div>
+        <div class="charts-grid hidden" id="monthly-charts">
+          <div class="card chart-container"><canvas id="statusPieChart"></canvas></div>
+          <div class="card chart-container"><canvas id="confidenceBarChart"></canvas></div>
+        </div>
+        <div class="card">
+          <h2>Monthly Aggregates</h2>
+          <p id="monthly-no-rows" class="hidden" style="text-align: center; color: #6b7280; padding: 2rem 0;">No monthly aggregate data found for the selected filters.</p>
+          <div class="table-responsive">
+            <table id="monthly-table">
+              <thead>
+                <tr>
+                  <th data-field="month">Month (IST)</th>
+                  <th data-field="project">Project</th>
+                  <th data-field="pm">PM</th>
+                  <th data-field="reports" style="text-align: center;"># Reports</th>
+                  <th data-field="onTrack" style="text-align: center;">On Track</th>
+                  <th data-field="atRisk" style="text-align: center;">At Risk</th>
+                  <th data-field="offTrack" style="text-align: center;">Off Track</th>
+                  <th data-field="avgConfidence" style="text-align: center;">Avg PM Confidence</th>
+                </tr>
+              </thead>
+              <tbody id="monthly-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="loading-overlay" class="loading-overlay hidden"><div class="spinner"></div></div>
+  <script>
+    // --- Environment (unused but kept) ---
+    var appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    var firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+    var __initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    // --- CONFIG ---
+    const BASE_URL = "https://script.google.com/macros/s/AKfycbx1jUWjcdxA7wUpcIOt2Q7O2uDpLJb5LmNyi352TEa40TZKNSfdZ_s3hvBi9iDTx3XM/exec";
+    const API_TOKEN = ""; // optional
+    const apiUrl = (params) => BASE_URL + (BASE_URL.includes('?') ? '&' : '?') + new URLSearchParams(params).toString();
+    // --- State ---
+    const state = {
+      project: "", pm: "",
+      selectedWeek: "", selectedMonth: "",
+      tab: "weekly",
+      sort: { weekly: { field: 'project', dir: 'asc' }, monthly: { field: 'month', dir: 'desc' } },
+      availableFilters: { weeks: [], months: [], projects: [], pms: [] }
+    };
+    let statusPieChart = null, confidenceBarChart = null;
+    let isInitialLoad = true; // Flag for pre-fetching
+    const detailIcons = { wins: '🏆', risks: '⚠️', next: '🎯', support: '🆘' };
+    // --- Mock Fallback Data ---
+    const mockData = {
+      globalFilters: { projects: ["Alpha Project (Mock)", "Beta Initiative (Mock)", "Gamma Stream (Mock)"], pms: ["Jane Doe (Mock)", "John Smith (Mock)"] },
+      weeks: ["2025-10-15T00:00:00.000Z", "2025-10-08T00:00:00.000Z", "2025-10-01T00:00:00.000Z"].map(iso => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso)).replace(/\//g, '-')).sort().reverse(),
+      months: ["2025-10-01T00:00:00.000Z", "2025-09-01T00:00:00.000Z"].map(iso => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit" }).format(new Date(iso)).slice(0, 7).replace(/\//g, '-')).sort().reverse(),
+      weekly: [
+        { project: "Alpha Project (Mock)", status: "On Track", happiness: 'High', confidence: 8, week: "2025-10-15T00:00:00.000Z", pm: "Jane Doe (Mock)", wins: "Mock win 1.\nMock win 2.", risks: "Mock risk 1.", next: "Mock next step.", support: "No support needed." },
+        { project: "Beta Initiative (Mock)", status: "At Risk", happiness: 'Medium', confidence: 5, week: "2025-10-15T00:00:00.000Z", pm: "John Smith (Mock)", wins: "Minor progress.", risks: "Scope creep.\nResource shortage.", next: "Review scope.", support: "Need PM approval." },
+      ],
+      monthly: [
+        { month: "2025-10-01T00:00:00.000Z", project: "Alpha Project (Mock)", pm: "Jane Doe (Mock)", reports: 4, onTrack: 3, atRisk: 1, offTrack: 0, avgConfidence: 8.5 },
+        { month: "2025-10-01T00:00:00.000Z", project: "Beta Initiative (Mock)", pm: "John Smith (Mock)", reports: 2, onTrack: 0, atRisk: 2, offTrack: 0, avgConfidence: 5.0 },
+      ]
+    };
+    // --- OPTIMIZATION: Caching ---
+    const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+    const cache = {
+        get: (key) => {
+            try {
+                const itemStr = sessionStorage.getItem(key);
+                if (!itemStr) return null;
+                const item = JSON.parse(itemStr);
+                if (new Date().getTime() > item.expiry) {
+                    sessionStorage.removeItem(key);
+                    return null;
+                }
+                return item.value;
+            } catch (e) {
+                console.warn("Cache read error:", e);
+                return null;
+            }
+        },
+        set: (key, value) => {
+            try {
+                const item = { value, expiry: new Date().getTime() + CACHE_DURATION_MS };
+                sessionStorage.setItem(key, JSON.stringify(item));
+            } catch (e) {
+                console.warn("Cache write error:", e);
+            }
+        },
+        clear: () => {
+            try {
+                sessionStorage.clear();
+                console.log("Session cache cleared.");
+            } catch (e) {
+                console.warn("Cache clear error:", e);
+            }
+        }
+    };
+    // --- JSONP ---
+    function jsonp(url) {
+      return new Promise((resolve, reject) => {
+        const cb = "__cb" + Math.random().toString(36).slice(2);
+        const s = document.createElement("script");
+        const cleanup = () => { delete window[cb]; s.remove(); }
+        const t = setTimeout(() => { cleanup(); reject(new Error("JSONP timeout: 45s exceeded")) }, 45000);
+        window[cb] = data => { clearTimeout(t); cleanup(); resolve(data); }
+        s.onerror = () => { clearTimeout(t); cleanup(); reject(new Error("JSONP load error")) }
+        s.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cb + (API_TOKEN ? `&token=${API_TOKEN}` : "");
+        document.head.appendChild(s);
+      });
+    }
+    // --- Error handling ---
+    window.onerror = function(message, source, lineno, colno, error) {
+      console.error("Global JavaScript Error Caught:", message, source, lineno, colno, error);
+      const el = document.getElementById('error-message');
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.classList.add('hidden');
+      let msg = message;
+      if (message === "Script error.") {
+        msg = "Cross-Origin Script Error Detected. This can be a transient network error, a wrong BASE_URL, or a cold start timeout.";
+      }
+      if (el) { el.textContent = `A critical script error occurred: ${msg}. Check console for details.`; el.classList.remove('hidden'); }
+      return true;
+    };
+    // --- Utils ---
+    const toISTDate = iso => !iso ? "" : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso)).replace(/\//g, '-');
+    const coerceYYYYMM = v => {
+      if (!v) return "";
+      if (/^\d{4}-\d{2}$/.test(v)) return v;
+      try {
+        const p = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit" }).format(new Date(v));
+        return p.slice(0, 7).replace(/\//g, '-');
+      } catch { return ""; }
+    };
+    const toDisplayMonth = yymm => !yymm ? "N/A" : new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(new Date(`${yymm}-01T00:00:00`));
+    function updateIndicator() {
+      const i = document.getElementById('updated-indicator');
+      if (i) { i.textContent = `Updated: ${new Date().toLocaleString('en-IN')}`; i.classList.remove('hidden'); }
+    }
+    // --- API wrappers (now with caching) ---
+    async function apiHealthCheck() { /* Health check should not be cached */
+      const data = await jsonp(apiUrl({ route: 'health' }));
+      if (data && data.ok === true) return true;
+      throw new Error("API responded but reported not OK.");
+    }
+    async function apiGlobalFilters(force = false) {
+      const cacheKey = 'api-global-filters';
+      if (!force) { const cached = cache.get(cacheKey); if (cached) return cached; }
+      try {
+        const data = await jsonp(apiUrl({ route: 'filters' }));
+        cache.set(cacheKey, data); return data;
+      } catch (e) { console.warn("JSONP filters failed:", e); return mockData.globalFilters; }
+    }
+    async function apiWeeks(force = false) {
+      const cacheKey = 'api-weeks';
+      if (!force) { const cached = cache.get(cacheKey); if (cached) return cached; }
+      try {
+        const data = await jsonp(apiUrl({ route: 'weeks', limit: 5 }));
+        const arr = (Array.isArray(data) ? data : (data.weeks || [])).map(w => toISTDate(w)).sort().reverse();
+        cache.set(cacheKey, arr); return arr;
+      } catch (e) { console.warn("JSONP weeks failed:", e); return mockData.weeks; }
+    }
+    async function apiMonths(force = false) {
+      const cacheKey = 'api-months';
+      if (!force) { const cached = cache.get(cacheKey); if (cached) return cached; }
+      try {
+        const data = await jsonp(apiUrl({ route: 'months', limit: 6 }));
+        const arr = (Array.isArray(data) ? data : (data.months || [])).map(coerceYYYYMM).sort().reverse();
+        cache.set(cacheKey, arr); return arr;
+      } catch (e) { console.warn("JSONP months failed:", e); return mockData.months; }
+    }
+    async function apiWeekly({ week, project, pm, sortField = 'project', sortDir = 'asc' } = {}, force = false) {
+      const params = { route: 'weekly', sortField, sortDir };
+      if (week) params.week = week; if (project) params.project = project; if (pm) params.pm = pm;
+      const cacheKey = `api-weekly-${JSON.stringify(params)}`;
+      if (!force) { const cached = cache.get(cacheKey); if (cached) return cached; }
+      try {
+        const rows = (await jsonp(apiUrl(params))).map(r => ({ ...r, weekIST: toISTDate(r.week) }));
+        cache.set(cacheKey, rows); return rows;
+      } catch (e) {
+        console.warn("JSONP weekly failed:", e);
+        return mockData.weekly.filter(r => toISTDate(r.week) === week).map(r => ({ ...r, weekIST: toISTDate(r.week) }));
+      }
+    }
+    async function apiMonthly({ month, project, pm, sortField = 'month', sortDir = 'desc' } = {}, force = false) {
+      const params = { route: 'monthly', sortField, sortDir };
+      if (month) params.month = month; if (project) params.project = project; if (pm) params.pm = pm;
+      const cacheKey = `api-monthly-${JSON.stringify(params)}`;
+      if (!force) { const cached = cache.get(cacheKey); if (cached) return cached; }
+      try {
+        const data = await jsonp(apiUrl(params));
+        cache.set(cacheKey, data); return data;
+      } catch (e) {
+        console.warn("JSONP monthly failed:", e);
+        return mockData.monthly.filter(r => coerceYYYYMM(r.month) === month);
+      }
+    }
+    // --- Rendering ---
+    function getHappinessDisplay(happiness) {
+        const h = (happiness || '').toLowerCase().trim();
+        if (h === 'very high') return '<span>😁 Very High</span>';
+        if (h === 'high') return '<span>🙂 High</span>';
+        if (h === 'medium') return '<span>😐 Medium</span>';
+        if (h === 'low') return '<span>😟 Low</span>';
+        return `<span>⚪ ${happiness || 'N/A'}</span>`;
+    }
+    function getStatusBadge(status) {
+      const s = (status || '').toLowerCase(); let cls = 'bg-gray-400', text = status || 'N/A';
+      if (s.includes('on track')) cls = 'bg-green-500';
+      else if (s.includes('at risk')) cls = 'bg-yellow-500';
+      else if (s.includes('off track')) cls = 'bg-red-500';
+      return `<span class="status-badge ${cls}">${text}</span>`;
+    }
+    function renderWeeklyTable(data) {
+      const tbody = document.getElementById('weekly-table-body');
+      const noRows = document.getElementById('weekly-no-rows');
+      const sort = state.sort.weekly; if (!tbody || !noRows) return;
+      tbody.innerHTML = ''; noRows.classList.add('hidden');
+      if (!data || data.length === 0) { noRows.classList.remove('hidden'); return; }
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.project || 'N/A'}</td>
+          <td>${getStatusBadge(item.status)}</td>
+          <td style="text-align: center;">${getHappinessDisplay(item.happiness)}</td>
+          <td style="text-align: center;">${item.confidence ? `${item.confidence}/10` : 'N/A'}</td>
+          <td>${item.weekIST || 'N/A'}</td>
+          <td>${item.pm || 'N/A'}</td>`;
+        const details = document.createElement('tr');
+        details.className = 'weekly-details-row';
+        details.innerHTML = `
+          <td colspan="6" style="padding:0;">
+            <details>
+              <summary class="weekly-details-summary">Click for Details (Wins, Risks, Next, Support)</summary>
+              <div class="weekly-details-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                <div class="detail-box" style="border-left: 4px solid #10B981;"><strong style="color: #059669;">${detailIcons.wins} Wins:</strong><p style="margin-top: .25rem;">${(item.wins || 'No reported wins.').replace(/\n/g, '<br>')}</p></div>
+                <div class="detail-box" style="border-left: 4px solid #EF4444;"><strong style="color: #DC2626;">${detailIcons.risks} Risks:</strong><p style="margin-top: .25rem;">${(item.risks || 'No reported risks.').replace(/\n/g, '<br>')}</p></div>
+                <div class="detail-box" style="border-left: 4px solid #3B82F6;"><strong style="color: #2563EB;">${detailIcons.next} Next:</strong><p style="margin-top: .25rem;">${(item.next || 'No next steps.').replace(/\n/g, '<br>')}</p></div>
+                <div class="detail-box" style="border-left: 4px solid #F59E0B;"><strong style="color: #D97706;">${detailIcons.support} Support:</strong><p style="margin-top: .25rem;">${(item.support || 'No support needed.').replace(/\n/g, '<br>')}</p></div>
+              </div>
+            </details>
+          </td>`;
+        tbody.appendChild(tr); tbody.appendChild(details);
+      });
+      document.querySelectorAll('#weekly-table th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.field === sort.field || (th.dataset.field === 'weekIST' && sort.field === 'week')) {
+          th.classList.add(sort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+      });
+    }
+    function renderCharts(data, onTrack, atRisk, offTrack) {
+      const pie = document.getElementById('statusPieChart')?.getContext('2d');
+      const bar = document.getElementById('confidenceBarChart')?.getContext('2d');
+      if (!pie || !bar) return;
+      if (statusPieChart) statusPieChart.destroy();
+      if (confidenceBarChart) confidenceBarChart.destroy();
+      statusPieChart = new Chart(pie, { type: 'pie', data: { labels: ['On Track', 'At Risk', 'Off Track'], datasets: [{ data: [onTrack, atRisk, offTrack], backgroundColor: ['#10B981', '#F59E0B', '#EF4444'], hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, title: { display: true, text: `Status Distribution for ${toDisplayMonth(state.selectedMonth)}` } } } });
+      const labels = data.map(i => i.project || 'Unknown'); const conf = data.map(i => i.avgConfidence || 0);
+      confidenceBarChart = new Chart(bar, { type: 'bar', data: { labels, datasets: [{ label: 'Average PM Confidence (0-10)', data: conf, backgroundColor: '#4F46E5', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 10, title: { display: true, text: 'PM Confidence Score' } }, x: { title: { display: true, text: 'Project' } } }, plugins: { legend: { display: false }, title: { display: true, text: `Avg PM Confidence per Project in ${toDisplayMonth(state.selectedMonth)}` } } } });
+    }
+    function renderMonthlyContent(data) {
+      const body = document.getElementById('monthly-table-body');
+      const noRows = document.getElementById('monthly-no-rows');
+      const kpis = document.getElementById('monthly-kpis');
+      const charts = document.getElementById('monthly-charts');
+      const sort = state.sort.monthly; if (!body || !noRows || !kpis || !charts) return;
+      body.innerHTML = ''; kpis.classList.add('hidden'); charts.classList.add('hidden'); noRows.classList.add('hidden');
+      if (!data || data.length === 0) { noRows.classList.remove('hidden'); return; }
+      kpis.classList.remove('hidden'); charts.classList.remove('hidden');
+      const totalReports = data.reduce((s, i) => s + (i.reports || 0), 0);
+      const totalOn = data.reduce((s, i) => s + (i.onTrack || 0), 0);
+      const totalRisk = data.reduce((s, i) => s + (i.atRisk || 0), 0);
+      const totalOff = data.reduce((s, i) => s + (i.offTrack || 0), 0);
+      const confs = data.filter(i => i.avgConfidence != null).map(i => i.avgConfidence);
+      const overall = confs.length ? (confs.reduce((s, c) => s + c, 0) / confs.length).toFixed(1) : 'N/A';
+      kpis.innerHTML = `
+        <div class="kpi-card bg-blue-100 border-blue-500"><span style="font-size: 1.5rem; font-weight: bold;">${totalReports}</span><span>Total Reports</span></div>
+        <div class="kpi-card bg-green-100 border-green-500"><span style="font-size: 1.5rem; font-weight: bold;">${totalOn}</span><span>On Track Count</span></div>
+        <div class="kpi-card bg-yellow-100 border-yellow-500"><span style="font-size: 1.5rem; font-weight: bold;">${totalRisk}</span><span>At Risk Count</span></div>
+        <div class="kpi-card bg-red-100 border-red-500"><span style="font-size: 1.5rem; font-weight: bold;">${totalOff}</span><span>Off Track Count</span></div>
+        <div class="kpi-card bg-indigo-100 border-indigo-500"><span style="font-size: 1.5rem; font-weight: bold;">${overall} / 10</span><span>Overall Avg PM Confidence</span></div>`;
+      data.forEach(i => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${coerceYYYYMM(i.month)}</td>
+          <td>${i.project || 'N/A'}</td>
+          <td>${i.pm || 'N/A'}</td>
+          <td style="text-align: center;">${i.reports || 0}</td>
+          <td style="text-align: center; color: #059669; font-weight: bold;">${i.onTrack || 0}</td>
+          <td style="text-align: center; color: #D97706; font-weight: bold;">${i.atRisk || 0}</td>
+          <td style="text-align: center; color: #DC2626; font-weight: bold;">${i.offTrack || 0}</td>
+          <td style="text-align: center;">${(i.avgConfidence != null) ? Number(i.avgConfidence).toFixed(1) : 'N/A'}</td>`;
+        body.appendChild(tr);
+      });
+      document.querySelectorAll('#monthly-table th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.field === sort.field) { th.classList.add(sort.dir === 'asc' ? 'sort-asc' : 'sort-desc'); }
+      });
+      renderCharts(data, totalOn, totalRisk, totalOff);
+    }
+    // --- Filters UI ---
+    function renderGlobalFilters() {
+      const { projects, pms } = state.availableFilters;
+      function fill(id, options, selected, placeholder) {
+        const el = document.getElementById(id); if (!el) return;
+        el.innerHTML = `<option value="">${placeholder}</option>`;
+        options.forEach(o => {
+          const op = document.createElement('option');
+          op.value = o; op.textContent = o; if (o === selected) op.selected = true; el.appendChild(op);
+        });
+      }
+      fill('project-dd', projects, state.project, 'All Projects');
+      fill('pm-dd', pms, state.pm, 'All PMs');
+    }
+    function renderWeeklyFilters() {
+      const weeks = state.availableFilters.weeks; const el = document.getElementById('week-dd'); if (!el) return;
+      el.innerHTML = '';
+      if (weeks.length === 0) { el.innerHTML = '<option value="">No Weeks Found</option>'; state.selectedWeek = ""; return; }
+      weeks.forEach(w => { const op = document.createElement('option'); op.value = w; op.textContent = w; el.appendChild(op); });
+      const init = state.selectedWeek || weeks[0]; state.selectedWeek = init; el.value = init;
+    }
+    function renderMonthlyFilters() {
+      const months = state.availableFilters.months; const el = document.getElementById('month-dd-local'); if (!el) return;
+      el.innerHTML = '';
+      if (months.length === 0) { el.innerHTML = '<option value="">No Months Found</option>'; state.selectedMonth = ""; return; }
+      months.forEach(m => { const op = document.createElement('option'); op.value = m; op.textContent = toDisplayMonth(m); el.appendChild(op); });
+      const init = state.selectedMonth || months[0]; state.selectedMonth = init; el.value = init;
+    }
+    // --- App flow ---
+    function switchTab(tab) {
+      state.tab = tab;
+      const wBtn = document.getElementById('weekly-tab-btn'), mBtn = document.getElementById('monthly-tab-btn');
+      const w = document.getElementById('weekly-view'), m = document.getElementById('monthly-view');
+      if (tab === 'weekly') { wBtn?.classList.add('active-tab'); mBtn?.classList.remove('active-tab'); w?.classList.remove('hidden'); m?.classList.add('hidden'); }
+      else { mBtn?.classList.add('active-tab'); wBtn?.classList.remove('active-tab'); m?.classList.remove('hidden'); w?.classList.add('hidden'); }
+      refreshActiveTab();
+    }
+    function handleSort(field) {
+      const key = state.tab; const cur = state.sort[key];
+      const apiField = field === 'weekIST' ? 'week' : field;
+      if (cur.field === apiField) { cur.dir = cur.dir === 'asc' ? 'desc' : 'asc'; }
+      else { cur.field = apiField; cur.dir = 'asc'; }
+      refreshActiveTab();
+    }
+    async function prefetchInactiveTabData() {
+        const inactiveTab = state.tab === 'weekly' ? 'monthly' : 'weekly';
+        console.log(`Pre-fetching data for inactive tab: ${inactiveTab}`);
+        try {
+            if (inactiveTab === 'monthly') {
+                await apiMonthly({ month: state.selectedMonth, project: state.project, pm: state.pm });
+            } else {
+                await apiWeekly({ week: state.selectedWeek, project: state.project, pm: state.pm });
+            }
+             console.log(`Pre-fetching for ${inactiveTab} tab complete and cached.`);
+        } catch (e) {
+            console.warn(`Pre-fetching data for ${inactiveTab} tab failed:`, e);
+        }
+    }
+    async function refreshActiveTab(force = false) {
+      const overlay = document.getElementById('loading-overlay');
+      const err = document.getElementById('error-message');
+      overlay?.classList.remove('hidden'); err?.classList.add('hidden');
+      try {
+        const filters = { project: state.project, pm: state.pm };
+        if (state.tab === 'weekly') {
+          const sort = state.sort.weekly;
+          const rows = await apiWeekly({ ...filters, week: state.selectedWeek, sortField: sort.field, sortDir: sort.dir }, force);
+          renderWeeklyTable(rows);
+        } else {
+          const sort = state.sort.monthly;
+          const rows = await apiMonthly({ ...filters, month: state.selectedMonth, sortField: sort.field, sortDir: sort.dir }, force);
+          renderMonthlyContent(rows);
+        }
+        updateIndicator();
+        if (isInitialLoad) {
+            prefetchInactiveTabData();
+            isInitialLoad = false;
+        }
+      } catch (e) {
+        console.error("Failed to load data:", e);
+        if (err) { err.textContent = `An unexpected error occurred while loading ${state.tab} data. Error: ${e.message}`; err.classList.remove('hidden'); }
+      } finally {
+        overlay?.classList.add('hidden');
+      }
+    }
+    function wireEvents() {
+      document.getElementById('project-dd')?.addEventListener('change', async e => { state.project = e.target.value || ""; await refreshActiveTab(); });
+      document.getElementById('pm-dd')?.addEventListener('change', async e => { state.pm = e.target.value || ""; await refreshActiveTab(); });
+      document.getElementById('reset-global-filters-btn')?.addEventListener('click', async () => { state.project = ""; state.pm = ""; renderGlobalFilters(); await refreshActiveTab(); });
+      document.getElementById('refresh-data-btn')?.addEventListener('click', async () => { cache.clear(); await refreshActiveTab(true); });
+      document.getElementById('week-dd')?.addEventListener('change', async e => { state.selectedWeek = e.target.value; await refreshActiveTab(); });
+      document.getElementById('month-dd-local')?.addEventListener('change', async e => { state.selectedMonth = e.target.value; await refreshActiveTab(); });
+      document.getElementById('weekly-tab-btn')?.addEventListener('click', () => switchTab('weekly'));
+      document.getElementById('monthly-tab-btn')?.addEventListener('click', () => switchTab('monthly'));
+      document.querySelectorAll('#weekly-table th[data-field]').forEach(th => th.addEventListener('click', e => handleSort(e.currentTarget.dataset.field)));
+      document.querySelectorAll('#monthly-table th[data-field]').forEach(th => th.addEventListener('click', e => handleSort(e.currentTarget.dataset.field)));
+    }
+    (async function init() {
+      const overlay = document.getElementById('loading-overlay');
+      const err = document.getElementById('error-message');
+      overlay?.classList.remove('hidden'); err?.classList.add('hidden');
+      console.log("Starting dashboard initialization sequence...");
+      
+      async function fetchInitialData(force = false) {
+          const [globalFilters, weeks, months] = await Promise.all([
+              apiGlobalFilters(force),
+              apiWeeks(force),
+              apiMonths(force)
+          ]);
+          return { globalFilters, weeks, months };
+      }
+
+      let initialData = await fetchInitialData();
+
+      if (!initialData || !initialData.globalFilters || !initialData.weeks || !initialData.months) {
+          console.warn("Initial fetch from cache/network failed, trying a forced refresh.");
+          initialData = await fetchInitialData(true); // Try one more time, bypassing cache
+          if (!initialData.globalFilters) {
+              if(err) { err.textContent = "API appears to be offline. Using mock data."; err.classList.remove('hidden'); }
+              initialData = { globalFilters: mockData.globalFilters, weeks: mockData.weeks, months: mockData.months };
+          }
+      }
+
+      try {
+        const { globalFilters, weeks, months } = initialData;
+        state.availableFilters.projects = globalFilters.projects || [];
+        state.availableFilters.pms = globalFilters.pms || [];
+        state.availableFilters.weeks = weeks || [];
+        state.availableFilters.months = months || [];
+        renderGlobalFilters();
+        renderWeeklyFilters();
+        renderMonthlyFilters();
+        wireEvents();
+        await refreshActiveTab(); // Initial load for default tab
+      } catch (e) {
+        console.error("Initialization failed:", e);
+        if (err) { err.textContent = `Dashboard initialization failed catastrophically: ${e.message}`; err.classList.remove('hidden'); }
+      } finally {
+        overlay?.classList.add('hidden');
+        console.log("Dashboard initialization sequence complete.");
+      }
+    })();
+  </script>
+</body>
+</html>
