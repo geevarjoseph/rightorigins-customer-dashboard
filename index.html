@@ -24,6 +24,13 @@
     header { background: var(--primary-color); color: #fff; padding: 1rem 1.5rem; box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); }
     h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
     .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: .3rem .75rem; border-radius: 9999px; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .risk-pill{
+      color:#fff; border-radius:9999px; padding:2px 10px; font-weight:700; font-size:.8rem;
+      display:inline-block; min-width:64px; text-align:center;
+    }
+    .text-center { text-align: center; }
+    .text-gray-500 { color: #6b7280; }
+    .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
     .bg-green-500 { background: #10B981; color: #fff; }
     .bg-yellow-500 { background: #F59E0B; color: #1f2937; }
     .bg-red-500 { background: #EF4444; color: #fff; }
@@ -55,18 +62,29 @@
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: .875rem; }
     table th { padding: .75rem 1.25rem; font-weight: 600; color: #4b5563; background: var(--primary-light); cursor: pointer; position: relative; }
     table td { padding: .75rem 1.25rem; white-space: nowrap; }
+    .projects-row { border-bottom: 1px solid var(--border-color); transition: background-color .15s; }
+    .projects-row:hover { background: #f8fafc; }
     #weekly-table-body tr:nth-child(4n-3) { background: #fafafa; }
     #weekly-table-body tr:not(.weekly-details-row):hover { background: #f0f4f8; }
     table tr:last-child { border-bottom: 1px solid var(--border-color); }
     .sort-asc:after, .sort-desc:after { content: ''; display: inline-block; width: 0; height: 0; margin-left: .5rem; vertical-align: middle; border-left: 4px solid transparent; border-right: 4px solid transparent; transition: transform .15s; }
     .sort-asc:after { border-bottom: 4px solid var(--primary-color); }
     .sort-desc:after { border-top: 4px solid var(--primary-color); }
-    .weekly-details-row td { padding: 0; border-top: none; border-bottom: 1px solid var(--border-color); }
+    .weekly-details-row td { padding: 0; border-top: none; border-bottom: 1px solid var(--border-color); white-space: normal; }
     .weekly-details-summary { font-weight: 600; color: var(--primary-color); cursor: pointer; list-style: none; padding: .75rem 1.25rem; transition: background-color .15s; }
     .weekly-details-summary::marker { display: none; }
-    .weekly-details-content { background: #f7f7f7; padding: 1rem 1.5rem 1rem 3rem; border-radius: 0 0 .5rem .5rem; border-top: 1px solid #e5e5e5; }
+    .weekly-details-content {
+      background: #f7f7f7;
+      padding: 1rem 1.5rem 1rem 3rem;
+      border-radius: 0 0 .5rem .5rem;
+      border-top: 1px solid #e5e5e5;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
     .weekly-details-row details[open] .weekly-details-summary { background: var(--primary-light); border-bottom: 1px solid #e5e5e5; }
     .detail-box { background: #fff; padding: .75rem; border-radius: .375rem; box-shadow: 0 1px 3px rgba(0, 0, 0, .05); }
+    .weekly-details-content p { margin: .25rem 0 0; white-space: normal; word-break: break-word; }
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
     .kpi-card { padding: 1rem; border-radius: .5rem; border-left: 5px solid; box-shadow: 0 2px 8px rgba(0, 0, 0, .08); display: flex; flex-direction: column; align-items: center; text-align: center; }
     .kpi-card span:first-child { color: var(--text-color); }
@@ -106,6 +124,7 @@
       <div class="tabs">
         <button id="weekly-tab-btn" class="tab-button active-tab">Weekly View</button>
         <button id="monthly-tab-btn" class="tab-button">Monthly Aggregates</button>
+        <button id="projects-tab-btn" class="tab-button">Projects</button>
       </div>
     </div>
     <div class="content-area">
@@ -171,6 +190,28 @@
           </div>
         </div>
       </div>
+      <!-- Projects View -->
+      <div id="projects-view" class="hidden">
+        <div class="card">
+          <h2>Projects — Risk Overview</h2>
+          <p id="projects-no-rows" class="hidden text-center text-gray-500 py-8">No project data found.</p>
+          <div class="table-responsive">
+            <table id="projects-table">
+              <thead>
+                <tr>
+                  <th data-field="project">Project</th>
+                  <th data-field="risk">Risk</th>
+                  <th data-field="status">Status</th>
+                  <th data-field="confidence" class="text-center">Confidence</th>
+                  <th data-field="happiness" class="text-center">Happiness</th>
+                  <th data-field="weekIST">Last Report (IST)</th>
+                </tr>
+              </thead>
+              <tbody id="projects-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div id="loading-overlay" class="loading-overlay hidden"><div class="spinner"></div></div>
@@ -188,7 +229,11 @@
       project: "", pm: "",
       selectedWeek: "", selectedMonth: "",
       tab: "weekly",
-      sort: { weekly: { field: 'project', dir: 'asc' }, monthly: { field: 'month', dir: 'desc' } },
+      sort: {
+        weekly: { field: 'project', dir: 'asc' },
+        monthly: { field: 'month', dir: 'desc' },
+        projects: { field: 'risk', dir: 'desc' }
+      },
       availableFilters: { weeks: [], months: [], projects: [], pms: [] }
     };
     let statusPieChart = null, confidenceBarChart = null;
@@ -284,6 +329,66 @@
       const i = document.getElementById('updated-indicator');
       if (i) { i.textContent = `Updated: ${new Date().toLocaleString('en-IN')}`; i.classList.remove('hidden'); }
     }
+    // ---- Risk score mapping (0-100; higher = riskier)
+    const STATUS_SCORE = { 'On Track': 15, 'At Risk': 60, 'Off Track': 90 };
+    const HAP_SCORE = { 'Very High': 10, 'High': 20, 'Medium': 40, 'Low': 70, 'Very Low': 85, 'Not Applicable': 50, '—': 50, '': 50 };
+
+    function _numOr(v, f=50){ return Number.isFinite(v)? v : f; }
+
+    function computeTrendAdjust(history){
+      if (!history || !history.length) return 0;
+      let adj = 0;
+      const latest = history[0], prev = history[1];
+      if (latest && prev && latest.status && prev.status){
+        const rank = s => (s.includes('Off Track')?3 : s.includes('At Risk')?2 : s.includes('On Track')?1 : 2);
+        const delta = rank(latest.status) - rank(prev.status);
+        if (delta > 0) adj += 10; else if (delta < 0) adj -= 5;
+      }
+      if (latest && prev && latest.confidence!=null && prev.confidence!=null){
+        if ((prev.confidence - latest.confidence) >= 2) adj += 5;
+      }
+      return Math.max(-10, Math.min(15, adj));
+    }
+
+    function computeMissingAdjust(history){
+      if (!history || !history.length) return 15;
+      const last = history[0]?.week ? new Date(history[0].week) : null;
+      let base = 0;
+      if (!last) base += 15;
+      else {
+        const days = (new Date() - last)/(1000*60*60*24);
+        if (days > 14) base += 15;
+      }
+      const missing = Math.max(0, 4 - history.length);
+      base += Math.min(15, missing * 5);
+      return Math.max(0, Math.min(30, base));
+    }
+
+    function computeRiskForProject(history){
+      const latest = history?.[0] || {};
+      const statusRaw = (latest.status || '').trim();
+      const statusKey = Object.keys(STATUS_SCORE).find(k => k.toLowerCase() === statusRaw.toLowerCase());
+      const statusScore = STATUS_SCORE[statusKey] ?? 60;
+      const confRisk = 100 - (_numOr(latest.confidence, 5) * 10);
+      const happyRaw = (latest.happiness || '').trim();
+      const happyKey = Object.keys(HAP_SCORE).find(k => k.toLowerCase() === happyRaw.toLowerCase());
+      const happyScore = HAP_SCORE[happyKey] ?? 50;
+      const trendAdj = computeTrendAdjust(history);
+      const missingAdj = computeMissingAdjust(history);
+      const risk =
+        0.45*statusScore +
+        0.25*confRisk +
+        0.15*happyScore +
+        0.10*trendAdj +
+        0.05*missingAdj;
+      return Math.max(0, Math.min(100, Math.round(risk)));
+    }
+
+    function riskBand(score){
+      if (score >= 65) return {label:'High', color:'#EF4444'};
+      if (score >= 35) return {label:'Medium', color:'#F59E0B'};
+      return {label:'Low', color:'#10B981'};
+    }
     // --- API wrappers (now with caching) ---
     async function apiHealthCheck() { /* Health check should not be cached */
       const data = await jsonp(apiUrl({ route: 'health' }));
@@ -342,6 +447,141 @@
         return mockData.monthly.filter(r => coerceYYYYMM(r.month) === month);
       }
     }
+    async function getRecentWeeksLimited(n=4, force=false){
+      const all = await apiWeeks(force);
+      return all.slice(0, n);
+    }
+
+    async function getProjectHistories(n=4, force=false){
+      const weeks = await getRecentWeeksLimited(n, force);
+      const byProj = new Map();
+      const filters = { project: state.project, pm: state.pm };
+      for (const w of weeks){
+        const rows = await apiWeekly({ week: w, sortField:'project', sortDir:'asc', ...filters }, force);
+        rows.forEach(r=>{
+          const key = r.project || '(Unknown)';
+          if (!byProj.has(key)) byProj.set(key, []);
+          byProj.get(key).push(r);
+        });
+      }
+      for (const arr of byProj.values()){
+        arr.sort((a,b)=> new Date(b.week) - new Date(a.week));
+      }
+      return byProj;
+    }
+
+    function renderProjectsTable(rows){
+      const tbody = document.getElementById('projects-table-body');
+      const noRows = document.getElementById('projects-no-rows');
+      if (!tbody || !noRows) return;
+
+      tbody.innerHTML = '';
+      noRows.classList.add('hidden');
+
+      const headers = document.querySelectorAll('#projects-table th');
+      headers.forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
+
+      if (!rows || !rows.length){
+        noRows.classList.remove('hidden');
+        return;
+      }
+
+      rows.forEach(r=>{
+        const pill = `<span class="risk-pill" style="background:${r.color}">${r.score} (${r.band})</span>`;
+        const tr = document.createElement('tr');
+        tr.className = 'projects-row';
+        tr.innerHTML = `
+          <td style="padding: .75rem 1.25rem; font-weight: 600;">${r.project || '—'}</td>
+          <td style="padding: .75rem 1.25rem;">${pill}</td>
+          <td style="padding: .75rem 1.25rem;">${getStatusBadge(r.latest?.status)}</td>
+          <td style="padding: .75rem 1.25rem; text-align: center;">${typeof r.latest?.confidence === 'number' ? `${r.latest.confidence}/10` : '—'}</td>
+          <td style="padding: .75rem 1.25rem; text-align: center;">${r.latest?.happiness ? getHappinessDisplay(r.latest.happiness) : '—'}</td>
+          <td style="padding: .75rem 1.25rem;">${r.latest?.weekIST || '—'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const sort = state.sort.projects;
+      headers.forEach(th => {
+        if (th.dataset.field === sort.field || (th.dataset.field === 'weekIST' && sort.field === 'week')) {
+          th.classList.add(sort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+      });
+    }
+
+    function sortProjectsRows(rows){
+      const { field, dir } = state.sort.projects;
+      const direction = dir === 'asc' ? 1 : -1;
+      const normalize = v => (typeof v === 'string' ? v.toLowerCase() : v);
+      return rows.sort((a, b) => {
+        let va;
+        let vb;
+        switch(field){
+          case 'project':
+            va = a.project || '';
+            vb = b.project || '';
+            break;
+          case 'risk':
+            va = a.score;
+            vb = b.score;
+            break;
+          case 'status':
+            va = a.latest?.status || '';
+            vb = b.latest?.status || '';
+            break;
+          case 'confidence':
+            va = _numOr(a.latest?.confidence, -1);
+            vb = _numOr(b.latest?.confidence, -1);
+            break;
+          case 'happiness':
+            va = a.latest?.happiness || '';
+            vb = b.latest?.happiness || '';
+            break;
+          case 'weekIST':
+          case 'week':
+            va = a.latest?.weekIST ? new Date(a.latest.weekIST) : new Date(0);
+            vb = b.latest?.weekIST ? new Date(b.latest.weekIST) : new Date(0);
+            break;
+          default:
+            va = a[field];
+            vb = b[field];
+        }
+        va = normalize(va);
+        vb = normalize(vb);
+        if (va < vb) return -1 * direction;
+        if (va > vb) return 1 * direction;
+        return 0;
+      });
+    }
+
+    async function loadProjectsTab(force=false){
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+
+      try{
+        const msg = document.getElementById('error-message');
+        msg?.classList.add('hidden');
+        const histories = await getProjectHistories(4, force);
+        const rows = [];
+        histories.forEach((hist, project)=>{
+          const score = computeRiskForProject(hist);
+          const band = riskBand(score);
+          rows.push({ project, score, band: band.label, color: band.color, latest: hist[0] });
+        });
+        sortProjectsRows(rows);
+        renderProjectsTable(rows);
+        updateIndicator();
+      } catch(e){
+        console.error('Projects tab load failed:', e);
+        const msg = document.getElementById('error-message');
+        if (msg){
+          msg.textContent = `Failed to load Projects risk data: ${e.message}`;
+          msg.classList.remove('hidden');
+        }
+      } finally{
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+      }
+    }
     // --- Rendering ---
     function getHappinessDisplay(happiness) {
         const h = (happiness || '').toLowerCase().trim();
@@ -379,7 +619,7 @@
           <td colspan="6" style="padding:0;">
             <details>
               <summary class="weekly-details-summary">Click for Details (Wins, Risks, Next, Support)</summary>
-              <div class="weekly-details-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+              <div class="weekly-details-content">
                 <div class="detail-box" style="border-left: 4px solid #10B981;"><strong style="color: #059669;">${detailIcons.wins} Wins:</strong><p style="margin-top: .25rem;">${(item.wins || 'No reported wins.').replace(/\n/g, '<br>')}</p></div>
                 <div class="detail-box" style="border-left: 4px solid #EF4444;"><strong style="color: #DC2626;">${detailIcons.risks} Risks:</strong><p style="margin-top: .25rem;">${(item.risks || 'No reported risks.').replace(/\n/g, '<br>')}</p></div>
                 <div class="detail-box" style="border-left: 4px solid #3B82F6;"><strong style="color: #2563EB;">${detailIcons.next} Next:</strong><p style="margin-top: .25rem;">${(item.next || 'No next steps.').replace(/\n/g, '<br>')}</p></div>
@@ -475,16 +715,47 @@
       const init = state.selectedMonth || months[0]; state.selectedMonth = init; el.value = init;
     }
     // --- App flow ---
-    function switchTab(tab) {
-      state.tab = tab;
-      const wBtn = document.getElementById('weekly-tab-btn'), mBtn = document.getElementById('monthly-tab-btn');
-      const w = document.getElementById('weekly-view'), m = document.getElementById('monthly-view');
-      if (tab === 'weekly') { wBtn?.classList.add('active-tab'); mBtn?.classList.remove('active-tab'); w?.classList.remove('hidden'); m?.classList.add('hidden'); }
-      else { mBtn?.classList.add('active-tab'); wBtn?.classList.remove('active-tab'); m?.classList.remove('hidden'); w?.classList.add('hidden'); }
-      refreshActiveTab();
+    function switchTab(newTab){
+      state.tab = newTab;
+
+      const weeklyBtn = document.getElementById('weekly-tab-btn');
+      const monthlyBtn = document.getElementById('monthly-tab-btn');
+      const projectsBtn = document.getElementById('projects-tab-btn');
+
+      const weeklyView = document.getElementById('weekly-view');
+      const monthlyView = document.getElementById('monthly-view');
+      const projectsView = document.getElementById('projects-view');
+
+      const setActive = (btn, on) => { if (!btn) return; btn.classList[on?'add':'remove']('active-tab'); };
+
+      setActive(weeklyBtn, newTab==='weekly');
+      setActive(monthlyBtn, newTab==='monthly');
+      setActive(projectsBtn, newTab==='projects');
+
+      weeklyView?.classList.toggle('hidden', newTab!=='weekly');
+      monthlyView?.classList.toggle('hidden', newTab!=='monthly');
+      projectsView?.classList.toggle('hidden', newTab!=='projects');
+
+      if (newTab === 'weekly') refreshActiveTab();
+      else if (newTab === 'monthly') refreshActiveTab();
+      else loadProjectsTab();
     }
     function handleSort(field) {
-      const key = state.tab; const cur = state.sort[key];
+      const key = state.tab;
+      const cur = state.sort[key];
+      if (!cur) return;
+
+      if (key === 'projects') {
+        if (cur.field === field) {
+          cur.dir = cur.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          cur.field = field;
+          cur.dir = (field === 'risk' || field === 'week' || field === 'weekIST') ? 'desc' : 'asc';
+        }
+        loadProjectsTab();
+        return;
+      }
+
       const apiField = field === 'weekIST' ? 'week' : field;
       if (cur.field === apiField) { cur.dir = cur.dir === 'asc' ? 'desc' : 'asc'; }
       else { cur.field = apiField; cur.dir = 'asc'; }
@@ -505,6 +776,10 @@
         }
     }
     async function refreshActiveTab(force = false) {
+      if (state.tab === 'projects') {
+        await loadProjectsTab(force);
+        return;
+      }
       const overlay = document.getElementById('loading-overlay');
       const err = document.getElementById('error-message');
       overlay?.classList.remove('hidden'); err?.classList.add('hidden');
@@ -540,8 +815,11 @@
       document.getElementById('month-dd-local')?.addEventListener('change', async e => { state.selectedMonth = e.target.value; await refreshActiveTab(); });
       document.getElementById('weekly-tab-btn')?.addEventListener('click', () => switchTab('weekly'));
       document.getElementById('monthly-tab-btn')?.addEventListener('click', () => switchTab('monthly'));
+      const projectsTabBtn = document.getElementById('projects-tab-btn');
+      if (projectsTabBtn) projectsTabBtn.addEventListener('click', () => switchTab('projects'));
       document.querySelectorAll('#weekly-table th[data-field]').forEach(th => th.addEventListener('click', e => handleSort(e.currentTarget.dataset.field)));
       document.querySelectorAll('#monthly-table th[data-field]').forEach(th => th.addEventListener('click', e => handleSort(e.currentTarget.dataset.field)));
+      document.querySelectorAll('#projects-table th[data-field]').forEach(th => th.addEventListener('click', e => handleSort(e.currentTarget.dataset.field)));
     }
     (async function init() {
       const overlay = document.getElementById('loading-overlay');
